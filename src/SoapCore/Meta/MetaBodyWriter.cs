@@ -36,17 +36,26 @@ namespace SoapCore.Meta
 		private bool _buildDateTimeOffset;
 
 		[Obsolete]
-		public MetaBodyWriter(ServiceDescription service, string baseUrl, Binding binding, XmlNamespaceManager xmlNamespaceManager = null)
+		public MetaBodyWriter(ServiceDescription service,
+							  string baseUrl,
+							  Binding binding,
+							  XmlNamespaceManager xmlNamespaceManager = null)
 			: this(
 				service,
 				baseUrl,
 				xmlNamespaceManager ?? new XmlNamespaceManager(new NameTable()),
 				binding?.Name ?? "BasicHttpBinding_" + service.Contracts.First().Name,
+				service?.ToString() + "Port",
 				binding.MessageVersion ?? MessageVersion.None)
 		{
 		}
 
-		public MetaBodyWriter(ServiceDescription service, string baseUrl, XmlNamespaceManager xmlNamespaceManager, string bindingName, MessageVersion messageVersion) : base(isBuffered: true)
+		public MetaBodyWriter(ServiceDescription service,
+							  string baseUrl,
+							  XmlNamespaceManager xmlNamespaceManager,
+							  string bindingName, string portName,
+							  MessageVersion messageVersion,
+							  bool useStandardInputOutputMessages = true) : base(isBuffered: true)
 		{
 			_service = service;
 			_baseUrl = baseUrl;
@@ -61,7 +70,8 @@ namespace SoapCore.Meta
 			_requestedDynamicTypes = new Dictionary<string, Dictionary<string, string>>();
 
 			BindingName = bindingName;
-			PortName = bindingName;
+			PortName = portName;
+			UseStandardInputOutputMessages = useStandardInputOutputMessages;
 			_isSoap12 = messageVersion == MessageVersion.Soap12WSAddressing10 || messageVersion == MessageVersion.Soap12WSAddressingAugust2004;
 		}
 
@@ -70,6 +80,8 @@ namespace SoapCore.Meta
 		private string PortName { get; }
 
 		private string TargetNameSpace => _service.Contracts.First().Namespace;
+
+		private bool UseStandardInputOutputMessages { get; }
 
 		protected override void OnWriteBodyContents(XmlDictionaryWriter writer)
 		{
@@ -512,7 +524,15 @@ namespace SoapCore.Meta
 				}
 
 				writer.WriteStartElement("wsdl", "message", Namespaces.WSDL_NS);
-				writer.WriteAttributeString("name", $"{BindingType}_{operation.Name}_InputMessage");
+
+				if (UseStandardInputOutputMessages == true)
+				{
+					writer.WriteAttributeString("name", $"{BindingType}_{operation.Name}_InputMessage");
+				}
+				else
+				{
+					writer.WriteAttributeString("name", $"{operation.Name}");
+				}
 
 				if ((operation.IsMessageContractRequest && hasRequestBody) || !operation.IsMessageContractRequest)
 				{
@@ -553,7 +573,16 @@ namespace SoapCore.Meta
 				if (!operation.IsOneWay)
 				{
 					writer.WriteStartElement("wsdl", "message", Namespaces.WSDL_NS);
-					writer.WriteAttributeString("name", $"{BindingType}_{operation.Name}_OutputMessage");
+
+					if (UseStandardInputOutputMessages == true)
+					{
+						writer.WriteAttributeString("name", $"{BindingType}_{operation.Name}_OutputMessage");
+					}
+					else
+					{
+						writer.WriteAttributeString("name", $"{operation.Name}");
+					}
+
 					writer.WriteStartElement("wsdl", "part", Namespaces.WSDL_NS);
 					writer.WriteAttributeString("name", "parameters");
 					writer.WriteAttributeString("element", "tns:" + responseTypeName);
@@ -572,12 +601,32 @@ namespace SoapCore.Meta
 				writer.WriteStartElement("wsdl", "operation", Namespaces.WSDL_NS);
 				writer.WriteAttributeString("name", operation.Name);
 				writer.WriteStartElement("wsdl", "input", Namespaces.WSDL_NS);
-				writer.WriteAttributeString("message", $"tns:{BindingType}_{operation.Name}_InputMessage");
+
+				if (UseStandardInputOutputMessages == true)
+				{
+					writer.WriteAttributeString("message", $"tns:{BindingType}_{operation.Name}_InputMessage");
+				}
+				else
+				{
+					writer.WriteAttributeString("message", $"tns:{operation.Name}");
+					writer.WriteAttributeString("name", $"{operation.Name}");
+				}
+
 				writer.WriteEndElement(); // wsdl:input
 				if (!operation.IsOneWay)
 				{
 					writer.WriteStartElement("wsdl", "output", Namespaces.WSDL_NS);
-					writer.WriteAttributeString("message", $"tns:{BindingType}_{operation.Name}_OutputMessage");
+
+					if (UseStandardInputOutputMessages == true)
+					{
+						writer.WriteAttributeString("message", $"tns:{BindingType}_{operation.Name}_OutputMessage");
+					}
+					else
+					{
+						writer.WriteAttributeString("message", $"tns:{operation.Name}");
+						writer.WriteAttributeString("name", $"{operation.Name}");
+					}
+
 					writer.WriteEndElement(); // wsdl:output
 				}
 
@@ -598,6 +647,7 @@ namespace SoapCore.Meta
 			var soapNamespace = _isSoap12 ? Namespaces.SOAP12_NS : Namespaces.SOAP11_NS;
 			writer.WriteStartElement(soap, "binding", soapNamespace);
 			writer.WriteAttributeString("transport", Namespaces.TRANSPORT_SCHEMA);
+			writer.WriteAttributeString("style", "document");
 			writer.WriteEndElement(); // soap:binding
 
 			foreach (var operation in _service.Operations)
@@ -610,7 +660,16 @@ namespace SoapCore.Meta
 				writer.WriteAttributeString("style", "document");
 				writer.WriteEndElement(); // soap:operation
 
-				writer.WriteStartElement("wsdl", "input", Namespaces.WSDL_NS);
+				if (UseStandardInputOutputMessages == true)
+				{
+					writer.WriteStartElement("wsdl", "input", Namespaces.WSDL_NS);
+				}
+				else
+				{
+					writer.WriteStartElement("wsdl", "input", Namespaces.WSDL_NS);
+					writer.WriteAttributeString("name", operation.Name);
+				}
+
 				writer.WriteStartElement(soap, "body", soapNamespace);
 				writer.WriteAttributeString("use", "literal");
 				writer.WriteEndElement(); // soap:body
@@ -618,7 +677,16 @@ namespace SoapCore.Meta
 
 				if (!operation.IsOneWay)
 				{
-					writer.WriteStartElement("wsdl", "output", Namespaces.WSDL_NS);
+					if (UseStandardInputOutputMessages == true)
+					{
+						writer.WriteStartElement("wsdl", "output", Namespaces.WSDL_NS);
+					}
+					else
+					{
+						writer.WriteStartElement("wsdl", "output", Namespaces.WSDL_NS);
+						writer.WriteAttributeString("name", operation.Name);
+					}
+
 					writer.WriteStartElement(soap, "body", soapNamespace);
 					writer.WriteAttributeString("use", "literal");
 					writer.WriteEndElement(); // soap:body

@@ -159,7 +159,7 @@ namespace SoapCore
 			var bindingName = "BasicHttpBinding";
 
 			var bodyWriter = _options.SoapSerializer == SoapSerializer.XmlSerializer
-				? new MetaBodyWriter(_service, baseUrl, xmlNamespaceManager, bindingName, _messageEncoders[0].MessageVersion)
+				? new MetaBodyWriter(_service, baseUrl, xmlNamespaceManager, bindingName, _options.PortName, _messageEncoders[0].MessageVersion, _options.UseStandardInputOutputMessages)
 				: (BodyWriter)new MetaWCFBodyWriter(_service, baseUrl, bindingName, _options.UseBasicAuthentication);
 
 			using var responseMessage = new MetaMessage(

@@ -44,6 +44,15 @@ namespace SoapCore
 		public XmlNamespaceManager XmlNamespacePrefixOverrides { get; set; }
 		public WsdlFileOptions WsdlFileOptions { get; set; }
 
+		/// <summary>
+		/// Gets or sets a value indicating whether the service messages will use 'ServiceName + Operation Name + Output/Input + Message'.
+		/// <para>Or it will use the OperationName instead, to conform to older frameworks (such as Java).</para>
+		/// </summary>
+		public bool UseStandardInputOutputMessages { get; set; }
+
+		public string PortName { get; set; }
+
+
 		[Obsolete]
 		public static SoapOptions FromSoapCoreOptions<T>(SoapCoreOptions opt)
 		{
@@ -66,7 +75,9 @@ namespace SoapCore
 				OmitXmlDeclaration = opt.OmitXmlDeclaration,
 				IndentXml = opt.IndentXml,
 				XmlNamespacePrefixOverrides = opt.XmlNamespacePrefixOverrides,
-				WsdlFileOptions = opt.WsdlFileOptions
+				WsdlFileOptions = opt.WsdlFileOptions,
+				PortName = opt.PortName,
+				UseStandardInputOutputMessages = opt.UseStandardInputOutputMessages
 			};
 
 #pragma warning disable CS0612 // Type or member is obsolete

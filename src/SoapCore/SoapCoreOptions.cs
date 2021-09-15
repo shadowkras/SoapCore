@@ -92,5 +92,13 @@ namespace SoapCore
 		public XmlNamespaceManager XmlNamespacePrefixOverrides { get; set; }
 
 		public WsdlFileOptions WsdlFileOptions { get; set; }
+
+		/// <summary>
+		/// Gets or sets a value indicating whether the service messages will use 'ServiceName + Operation Name + Output/Input + Message'.
+		/// <para>Or it will use the OperationName instead, to conform to older frameworks (such as Java).</para>
+		/// </summary>
+		public bool UseStandardInputOutputMessages { get; set; }
+
+		public string PortName { get; set; }
 	}
 }
